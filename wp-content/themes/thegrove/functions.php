@@ -139,6 +139,7 @@ add_action( 'widgets_init', 'thegrove_widgets_init' );
  */
 function thegrove_scripts() {
 	/* Styles */
+	wp_enqueue_style( 'thegrove-defaults-css', get_template_directory_uri() . '/css/style-defaults.css', array(), '1.0.0' );
 	wp_enqueue_style( 'thegrove-bootstrap-css', get_template_directory_uri() . '/lib/bootstrap/css/bootstrap.min.css', array(), '5.2' );
 	wp_enqueue_style( 'thegrove-style', get_stylesheet_uri(), array(), _S_VERSION );
 	wp_style_add_data( 'thegrove-style', 'rtl', 'replace' );
