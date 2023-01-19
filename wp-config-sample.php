@@ -65,7 +65,7 @@ define( 'NONCE_SALT',       'put your unique phrase here' );
  * You can have multiple installations in one database if you give each
  * a unique prefix. Only numbers, letters, and underscores please!
  */
-$table_prefix = 'wp_';
+$table_prefix = 'grv_';
 
 /**
  * For developers: WordPress debugging mode.
@@ -80,6 +80,9 @@ $table_prefix = 'wp_';
  * @link https://wordpress.org/support/article/debugging-in-wordpress/
  */
 define( 'WP_DEBUG', false );
+
+## Disable Editing in Dashboard
+define('DISALLOW_FILE_EDIT', true);
 
 /* Add any custom values between this line and the "stop editing" line. */
 
