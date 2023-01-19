@@ -9,3 +9,6 @@ wp-config.php
 
 # htaccess
 #/.htaccess
+
+# Flywheel debug file
+local-xdebuginfo.php
