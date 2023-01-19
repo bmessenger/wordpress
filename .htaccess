@@ -1,0 +1,71 @@
+# Security Headers
+<IfModule mod_headers.c>
+	Header set X-XSS-Protection "1; mode=block"
+	Header set X-Frame-Options "SAMEORIGIN"
+	Header set X-Content-Type-Options "nosniff"
+	Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains"
+	Header always set Content-Security-Policy "upgrade-insecure-requests;"
+	Header set Referrer-Policy "same-origin"
+	Header set Feature-Policy "geolocation 'self'; vibrate 'none'"
+	Header always set Expect-CT "max-age=7776000, enforce"
+</IfModule>
+
+# XML-RPC DDoS & TRACKBACK/PINGBACK PROTECTION
+<FilesMatch "^(xmlrpc\.php|wp-trackback\.php)">
+	#Require all denied
+	#Require ip x.x.x.
+</FilesMatch>
+
+# Brute-force login prevention (stops direct POSTing to wp-login.php)
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteCond %{REQUEST_METHOD} POST
+	RewriteCond %{REQUEST_URI} wp-login\.php*
+	RewriteCond %{HTTP_HOST}@@%{HTTP_REFERER} !^([^@]*)@@https?://\1/.*
+	RewriteRule .* - [F,L]
+</IfModule>
+
+# Set expire header for static assets
+<IfModule mod_expires.c>
+	ExpiresActive On
+	<FilesMatch "\.(css|eot|gif|ico|jpeg|jpg|js|png|svg|swf|ttf|woff)">
+		ExpiresDefault "access plus 1 year"
+	</FilesMatch>
+</IfModule>
+
+# Block the include-only files.
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteBase /
+	RewriteRule ^wp-admin/includes/ - [F,L]
+	RewriteRule !^wp-includes/ - [S=3]
+	RewriteRule ^wp-includes/[^/]+\.php$ - [F,L]
+	RewriteRule ^wp-includes/js/tinymce/langs/.+\.php - [F,L]
+	RewriteRule ^wp-includes/theme-compat/ - [F,L]
+</IfModule>
+
+# Disallow direct access to the wp-config.php file
+<files wp-config.php>
+	Require all denied
+</files>
+
+# Kill PHP Execution
+<Files ~ "\.ph(?:p[345]?|t|tml)$">
+	   #deny from all
+</Files>
+
+# BEGIN WordPress
+# The directives (lines) between "BEGIN WordPress" and "END WordPress" are
+# dynamically generated, and should only be modified via WordPress filters.
+# Any changes to the directives between these markers will be overwritten.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+# END WordPress
