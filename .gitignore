@@ -12,3 +12,6 @@ wp-config.php
 
 # Flywheel debug file
 local-xdebuginfo.php
+
+# Local Workspace
+/.nova
