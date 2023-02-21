@@ -14,4 +14,4 @@ wp-config.php
 local-xdebuginfo.php
 
 # Local Workspace
-/.nova
+.nova/
