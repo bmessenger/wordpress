@@ -5,7 +5,7 @@ if(!function_exists('add_action')){
 	exit;
 }
 
-define('LOGINIZER_VERSION', '1.7.6');
+define('LOGINIZER_VERSION', '1.7.7');
 define('LOGINIZER_DIR', dirname(LOGINIZER_FILE));
 define('LOGINIZER_URL', plugins_url('', LOGINIZER_FILE));
 define('LOGINIZER_PRO_URL', 'https://loginizer.com/features#compare');
@@ -228,6 +228,7 @@ function loginizer_load_plugin(){
 	$loginizer['reset_retries'] = empty($options['reset_retries']) ? 86400 : $options['reset_retries']; // 24 hours
 	$loginizer['notify_email'] = empty($options['notify_email']) ? 0 : $options['notify_email'];
 	$loginizer['notify_email_address'] = lz_is_multisite() ? get_site_option('admin_email') : get_option('admin_email');
+	$loginizer['trusted_ips'] = empty($options['trusted_ips']) ? false : true;
 	
 	if(!empty($options['notify_email_address'])){
 		$loginizer['notify_email_address'] = $options['notify_email_address'];
@@ -441,6 +442,7 @@ $site_name';
 	
 	// CSRF Protection
 	$loginizer['enable_csrf_protection'] = get_option('loginizer_csrf_protection');
+	$loginizer['2fa_custom_login_redirect'] = get_option('loginizer_2fa_custom_redirect');
 	
 	// ----------------
 	// PRO INIT END
@@ -626,6 +628,14 @@ function loginizer_wp_authenticate($user, $username, $password){
 	if(loginizer_is_whitelisted()){
 		$loginizer['ip_is_whitelisted'] = 1;
 		return $user;
+
+	} else if (!empty($loginizer['trusted_ips'])){
+		$lz_cannot_login = 1;
+
+		// This is used by WP Activity Log
+		apply_filters( 'wp_login_blocked', $username );
+		
+		return new WP_Error('ip_blacklisted', __('Your IP is not whitelisted, so you can not log in', 'loginizer'));
 	}
 	
 	// Are you blacklisted ?
@@ -891,7 +901,7 @@ function loginizer_error_handler($errors, $redirect_to){
 	global $wpdb, $loginizer, $lz_user_pass, $lz_cannot_login;
 	
 	//echo 'loginizer_error_handler :';print_r($errors->errors);echo '<br>';
-	if(is_null($errors)){
+	if(is_null($errors) || empty($errors)){
 		return true;
 	}
 
@@ -908,17 +918,17 @@ function loginizer_error_handler($errors, $redirect_to){
 		
 		$errors->remove('invalid_username');
 		$errors->remove('incorrect_password');
+	
+		// Add the error
+		if(!empty($lz_user_pass) && !empty($show_error) && empty($lz_cannot_login)){
+			$errors->add('invalid_userpass', '<b>ERROR:</b> ' . $loginizer['msg']['inv_userpass']);
+		}
 		
-	}
-	
-	// Add the error
-	if(!empty($lz_user_pass) && !empty($show_error) && empty($lz_cannot_login)){
-		$errors->add('invalid_userpass', '<b>ERROR:</b> ' . $loginizer['msg']['inv_userpass']);
-	}
-	
-	// Add the number of retires left as well
-	if(count($errors->get_error_codes()) > 0 && isset($loginizer['retries_left'])){
-		$errors->add('retries_left', loginizer_retries_left());
+		// Add the number of retires left as well
+		if(count($errors->get_error_codes()) > 0 && isset($loginizer['retries_left'])){
+			$errors->add('retries_left', loginizer_retries_left());
+		}
+
 	}
 	
 	return $errors;
@@ -945,7 +955,9 @@ function loginizer_retries_left(){
 	
 	// If we are to show the number of retries left
 	if(isset($loginizer['retries_left'])){
-		return '<b>'.$loginizer['retries_left'].'</b> '.$loginizer['msg']['attempts_left'];
+		$retries_left = apply_filters('loginizer_retries_left_num', $loginizer['retries_left']);
+		
+		return '<b>'.sanitize_text_field($retries_left).'</b> '.$loginizer['msg']['attempts_left'];
 	}
 	
 }
@@ -1620,9 +1632,14 @@ function loginizer_page_brute_force(){
 		$reset_retries = (int) lz_optpost('reset_retries');
 		$notify_email = (int) lz_optpost('notify_email');
 		$notify_email_address = lz_optpost('notify_email_address');
+		$trusted_ips = lz_optpost('trusted_ips');
 		
 		if(!empty($notify_email_address) && !lz_valid_email($notify_email_address)){
 			$error[] = __('Email address is invalid', 'loginizer');
+		}
+		
+		if(empty(loginizer_is_whitelisted()) && isset($_POST['trusted_ips'])){
+			$error[] = __('Add your IP to whitelist to enable Trusted IP\'s', 'loginizer');
 		}
 		
 		if(!empty($max_retries) && $max_retries < 0){
@@ -1662,6 +1679,7 @@ function loginizer_page_brute_force(){
 			$option['reset_retries'] = $reset_retries;
 			$option['notify_email'] = $notify_email;
 			$option['notify_email_address'] = $notify_email_address;
+			$option['trusted_ips'] = $trusted_ips;
 			
 			// Save the options
 			update_option('loginizer_options', $option);
@@ -1857,7 +1875,7 @@ function loginizer_page_brute_force(){
 					. '</p></div><br />';
 			
 		}
-		
+
 		if(!empty($error)){
 			lz_report_error($error);echo '<br />';
 		}
@@ -2243,6 +2261,13 @@ function loginizer_page_brute_force(){
 				<th scope="row" valign="top"><label for="notify_email_address"><?php echo __('Email Address','loginizer'); ?></label></th>
 				<td>
 					<input type="text" value="<?php echo (!empty($notify_email_address) ? $notify_email_address : (!empty($loginizer['custom_notify_email']) ? $loginizer['notify_email_address'] : '')); ?>" name="notify_email_address" id="notify_email_address" size="30" /> <br /><?php echo __('failed login attempts notifications will be sent to this email','loginizer'); ?>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row" valign="top"><label for="trusted_ips"><?php echo __('Trusted IP\'s','loginizer'); ?><span style="color:red; margin-left:5px;">New</span></label></th>
+				<td>
+					<input type="checkbox" <?php echo lz_POSTchecked('trusted_ips', (empty($loginizer['trusted_ips']) ? false : true)); ?> name="trusted_ips" id="trusted_ips"/>
+					<?php _e('If enabled Loginizer will only allow whitlisted IP\'s to Login.', 'loginizer'); ?>
 				</td>
 			</tr>
 		</table><br />
@@ -3406,6 +3431,17 @@ function loginizer_page_2fa(){
 		
 	}
 	
+	if(isset($_POST['save_2fa_custom_redirect'])){
+		
+		if(!empty($_POST['lz_2fa_custom_login_redirect'])){
+			$loginizer['2fa_custom_login_redirect'] = map_deep($_POST['lz_2fa_custom_login_redirect'], 'sanitize_text_field');
+
+			update_option('loginizer_2fa_custom_redirect', $loginizer['2fa_custom_login_redirect']);
+
+			$GLOBALS['lz_saved'] = true;
+		}
+	}
+	
 	if(isset($_POST['save_2fa_email_template_lz'])){
 		
 		// In the future there can be more settings
@@ -4001,6 +4037,48 @@ function del_2fa_confirm_all(msg){
 		<br />
 	
 	</div>
+		
+	<!--Custom Redirects based on role-->
+	<div id="" class="postbox">
+	
+		<div class="postbox-header">
+		<h2 class="hndle ui-sortable-handle">
+			<span><?php echo __('Custom Redirects based on roles', 'loginizer'); ?><span style="color:red; margin-left:5px;">New</span></span>
+		</h2>
+		</div>
+		
+		<div class="inside">
+		
+		<form action="" method="post" enctype="multipart/form-data" loginizer-premium-only="1">
+		<?php wp_nonce_field('loginizer-options'); ?>
+		<table class="form-table">
+			<tr>
+				<td scope="row" valign="top" colspan="2">
+					<i><?php echo __('Here you can set the URL, which you wish your user to get redirected to after login via 2FA.', 'loginizer'); ?></i>
+				</td>
+			</tr>
+			<?php
+			global $wp_roles;
+
+			foreach($wp_roles->roles as $key => $role){
+				echo'<tr>
+					<td scope="row" valign="top">
+						<label>'. esc_html($role['name']).'</label><br>
+					</td>
+					<td>
+						<input type="text" size="50" value="'.(!empty($loginizer['2fa_custom_login_redirect']) && !empty($loginizer['2fa_custom_login_redirect'][$key]) ? esc_attr($loginizer['2fa_custom_login_redirect'][$key]) : '').'" placeholder="'.site_url().'" name="lz_2fa_custom_login_redirect['.esc_html($key).']" />
+					</td>
+				</tr>';
+			}
+			?>
+			
+		</table><br />
+		
+		<center><input name="save_2fa_custom_redirect" class="button button-primary action" value="<?php echo __('Save Custom URLs', 'loginizer'); ?>" type="submit" /></center>
+		</form>
+	
+		</div>
+	</div>
 
 	<?php
 	loginizer_page_footer();
@@ -4171,7 +4249,7 @@ input[type="text"], textarea, select {
 				<?php
 					$editable_roles = get_editable_roles();
 					echo '<div style="max-height:120px; overflow:auto;">';
-					
+					$r = '';
 					foreach($editable_roles as $role => $details) {
 						$name = translate_user_role( $details['name'] );
 						// Preselect specified role.
@@ -4809,7 +4887,7 @@ function lz_show_rewrite_rule(e){
 	
 		<div class="postbox-header">
 		<h2 class="hndle ui-sortable-handle">
-			<span><?php esc_html_e('CSRF Protection', 'loginizer'); ?>&nbsp; <span style="color:red;">New</span></span>
+			<span><?php esc_html_e('CSRF Protection', 'loginizer'); ?></span>
 		</h2>
 		</div>
 		
@@ -5747,6 +5825,15 @@ global $wpdb;
 	delete_option('loginizer_2fa_email_template');
 	delete_option('loginizer_security');
 	delete_option('loginizer_wp_admin');
+	delete_option('loginizer_csrf_promo_time');
+	delete_option('loginizer_backuply_promo_time');
+	delete_option('loginizer_promo_time');
+	delete_option('loginizer_ins_time');
+	delete_option('loginizer_2fa_whitelist');
+	delete_option('loginizer_checksums_last_run');
+	delete_option('loginizer_checksums_diff');
+	delete_option('loginizer_ip_method');
+	delete_option('loginizer_2fa_custom_redirect');
 
 }
 

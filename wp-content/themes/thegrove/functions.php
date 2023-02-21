@@ -147,6 +147,10 @@ function thegrove_scripts() {
 	/* Scripts */
 	wp_enqueue_script( 'thegrove-bootstrap-js', get_template_directory_uri() . '/lib/bootstrap/js/bootstrap.min.js', array('jquery'), '5.2', true );
 	wp_enqueue_script( 'thegrove-navigation', get_template_directory_uri() . '/js/navigation.js', array(), _S_VERSION, true );
+	
+	/* Our main Javascript file.  Get the timestamp and set it as the version (forces reload after making updates) */
+	$stmp = filemtime( get_stylesheet_directory() . '/js/main.js' );
+	wp_enqueue_script( 'thegrove-custom-js', get_template_directory_uri() . '/js/main.js', array('jquery'), $stmp, true );
 
 	if ( is_singular() && comments_open() && get_option( 'thread_comments' ) ) {
 		wp_enqueue_script( 'comment-reply' );
@@ -158,12 +162,18 @@ add_action( 'wp_enqueue_scripts', 'thegrove_scripts' );
  * Quality of Life
  */
 
-
-/* Custom login styles 
+/* Custom login styles */
 function thegrove_custom_login_stylesheet() {
 	wp_enqueue_style( 'thegrove-custom-login', get_stylesheet_directory_uri() . '/css/style-login.css' );
 }
-add_action( 'login_enqueue_scripts', 'thegrove_custom_login_stylesheet' ); */
+add_action( 'login_enqueue_scripts', 'thegrove_custom_login_stylesheet' );
+
+/* Load front-end styles into the editor for nice previews */
+function blocks_editor_scripts() {
+	$editor_style_path = '/css/style-editor.css';
+	wp_enqueue_style('thegrove-editor-styles', get_stylesheet_directory_uri() . $editor_style_path, ['wp-edit-blocks'], filemtime(get_template_directory() . $editor_style_path) );
+}
+add_action('enqueue_block_editor_assets', 'blocks_editor_scripts');
 
 /**
  * Custom acf blocks
