@@ -1,0 +1,14 @@
+{
+	"name": "acf/testimonials",
+	"title": "Testimonial Slider",
+	"description": "Testimonials Slider",
+	"style": [ "file:./testimonials.css" ],
+	"category": "acf-blocks",
+	"icon": "format-quote",
+	"keywords": ["sample", "reference", "demo"],
+	"acf": {
+		"mode": "edit",
+		"renderTemplate": "testimonials.php"
+	},
+	"align": "full"
+}

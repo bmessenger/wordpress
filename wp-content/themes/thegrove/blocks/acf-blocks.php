@@ -33,6 +33,6 @@ add_filter( 'block_categories_all' , function( $categories ) {
 add_action( 'init', 'register_acf_blocks' );
 function register_acf_blocks() {
 	register_block_type(__DIR__ . '/sample-block' );
-	//register_block_type(__DIR__ . '/../blocks/sample_block_2' );
-	//register_block_type(__DIR__ . '/../blocks/sample_block_3' );
+	register_block_type(__DIR__ . '/testimonials' );
+	//register_block_type(__DIR__ . '/sample_block_3' );
 }

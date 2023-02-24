@@ -17,3 +17,5 @@ the editing process.
 html :where(.wp-block) {
 	max-width: 1200px;
 }
+
+.wp-block {} /* All blocks added to the admin contain the .wp-block class */
