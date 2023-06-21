@@ -35,7 +35,7 @@ if ( $testimonials ) : ?>
 		
 		<?php foreach( $testimonials as $testimonial ) : ?>
             
-            <div class="slider">
+            <div class="slide">
                 <p><?php echo $testimonial['quote']; ?></p>
                 <h5><?php echo $testimonial['title']; ?></h5>
             </div>

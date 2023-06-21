@@ -30,9 +30,9 @@ add_filter( 'block_categories_all' , function( $categories ) {
 
 
 /* Register Blocks - https://www.advancedcustomfields.com/resources/blocks/ */
-add_action( 'init', 'register_acf_blocks' );
+add_action('init', 'register_acf_blocks');
 function register_acf_blocks() {
-	register_block_type(__DIR__ . '/sample-block' );
-	register_block_type(__DIR__ . '/testimonials' );
-	//register_block_type(__DIR__ . '/sample_block_3' );
+	foreach ( glob( get_stylesheet_directory() . '/blocks/*/' ) as $path ) {
+		register_block_type( $path . 'block.json' );
+	}
 }
